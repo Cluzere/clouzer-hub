@@ -1,3 +1,13 @@
+-- Hapus tombol "CLZ" lama kalau ada (Biar gak double pas execute ulang)
+pcall(function()
+    if game:GetService("CoreGui"):FindFirstChild("ClouzerMobileToggle") then
+        game:GetService("CoreGui").ClouzerMobileToggle:Destroy()
+    end
+    if game.Players.LocalPlayer.PlayerGui:FindFirstChild("ClouzerMobileToggle") then
+        game.Players.LocalPlayer.PlayerGui.ClouzerMobileToggle:Destroy()
+    end
+end)
+
 local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
 local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/SaveManager.lua"))()
 local InterfaceManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/InterfaceManager.lua"))()
@@ -6,7 +16,7 @@ local coreGui = game:GetService("CoreGui")
 local playerGui = game.Players.LocalPlayer:WaitForChild("PlayerGui")
 
 -- ==========================================
--- BUAT TOMBOL MELAYANG "CLZ" DI AWAL
+-- BUAT TOMBOL MELAYANG "CLZ" (ANTI-DOUBLE)
 -- ==========================================
 local ScreenGui = Instance.new("ScreenGui")
 local ToggleBtn = Instance.new("TextButton")
@@ -48,6 +58,36 @@ local Window = Fluent:CreateWindow({
     Acrylic = true,
     Theme = "Dark"
 })
+
+-- Cari Frame utama Fluent secara presisi
+local mainFrame = nil
+task.spawn(function()
+    while not mainFrame do
+        task.wait(0.2)
+        local containers = {coreGui, playerGui}
+        for _, container in ipairs(containers) do
+            for _, gui in ipairs(container:GetChildren()) do
+                if gui:IsA("ScreenGui") and gui ~= ScreenGui then
+                    for _, desc in ipairs(gui:GetDescendants()) do
+                        if desc:IsA("TextLabel") and desc.Text == "CLOUZER HUB" then
+                            local p = desc.Parent
+                            while p and p ~= gui do
+                                if p:IsA("Frame") and p.Size.X.Offset >= 400 then
+                                    mainFrame = p
+                                    break
+                                end
+                                p = p.Parent
+                            end
+                            break
+                        end
+                    end
+                end
+                if mainFrame then break end
+            end
+            if mainFrame then break end
+        end
+    end
+end)
 
 -- 2. Bikin Menu Tab
 local Tabs = {
@@ -103,41 +143,22 @@ Window:SelectTab(1)
 SaveManager:LoadAutoloadConfig()
 
 -- ==========================================
--- SISTEM TOGGLE MINIMIZE / RESTORE OTOMATIS
+-- SISTEM MINIMIZE / RESTORE (FRAME TOGGLE)
 -- ==========================================
 local isOpen = true
 ToggleBtn.MouseButton1Click:Connect(function()
-    isOpen = not isOpen
-
-    -- Ubah teks & warna indikator tombol secara instan
-    if isOpen then
-        ToggleBtn.Text = "CLZ"
-        ToggleBtn.TextColor3 = Color3.fromRGB(0, 255, 200) -- Hijau (Terbuka)
-    else
-        ToggleBtn.Text = "SHOW"
-        ToggleBtn.TextColor3 = Color3.fromRGB(255, 80, 80)  -- Merah (Minimized)
-    end
-
-    -- Cari dan toggle ScreenGui milik Fluent secara otomatis
-    local containers = {coreGui, playerGui}
-    for _, container in ipairs(containers) do
-        for _, gui in ipairs(container:GetChildren()) do
-            if gui:IsA("ScreenGui") and gui ~= ScreenGui then
-                -- Cek apakah ScreenGui ini punya komponen Frame (ciri khas UI library)
-                local hasFrame = false
-                pcall(function()
-                    for _, desc in ipairs(gui:GetDescendants()) do
-                        if desc:IsA("Frame") then
-                            hasFrame = true
-                            break
-                        end
-                    end
-                end)
-                
-                if hasFrame then
-                    gui.Enabled = isOpen
-                end
-            end
+    if mainFrame then
+        isOpen = not isOpen
+        mainFrame.Visible = isOpen
+        
+        if isOpen then
+            ToggleBtn.Text = "CLZ"
+            ToggleBtn.TextColor3 = Color3.fromRGB(0, 255, 200) -- Hijau (Terbuka)
+        else
+            ToggleBtn.Text = "SHOW"
+            ToggleBtn.TextColor3 = Color3.fromRGB(255, 80, 80)  -- Merah (Minimize)
         end
+    else
+        print("MainFrame Fluent belum tertangkap!")
     end
 end)
