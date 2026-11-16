@@ -2,15 +2,42 @@ local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/
 local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/SaveManager.lua"))()
 local InterfaceManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/InterfaceManager.lua"))()
 
--- Catat daftar GUI yang ada SEBELUM window dibuat (buat nangkep GUI Fluent secara instan)
 local coreGui = game:GetService("CoreGui")
-local players = game:GetService("Players")
-local playerGui = players.LocalPlayer:WaitForChild("PlayerGui")
+local playerGui = game.Players.LocalPlayer:WaitForChild("PlayerGui")
 
-local existingCore = {}
-for _, v in ipairs(coreGui:GetChildren()) do existingCore[v] = true end
-local existingPlayer = {}
-for _, v in ipairs(playerGui:GetChildren()) do existingPlayer[v] = true end
+-- ==========================================
+-- BUAT TOMBOL "CLZ" DI AWAL (AGAR AMAN & INDEPENDEN)
+-- ==========================================
+local ScreenGui = Instance.new("ScreenGui")
+local ToggleBtn = Instance.new("TextButton")
+local UICorner = Instance.new("UICorner")
+
+ScreenGui.Name = "ClouzerMobileToggle"
+pcall(function()
+    ScreenGui.Parent = coreGui
+end)
+if not ScreenGui.Parent then
+    ScreenGui.Parent = playerGui
+end
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+ScreenGui.ResetOnSpawn = false
+
+ToggleBtn.Name = "ToggleButton"
+ToggleBtn.Parent = ScreenGui
+ToggleBtn.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+ToggleBtn.BorderColor3 = Color3.fromRGB(0, 255, 200)
+ToggleBtn.BorderSizePixel = 2
+ToggleBtn.Position = UDim2.new(0, 20, 0.4, 0)
+ToggleBtn.Size = UDim2.new(0, 45, 0, 45)
+ToggleBtn.Font = Enum.Font.GothamBold
+ToggleBtn.Text = "CLZ"
+ToggleBtn.TextColor3 = Color3.fromRGB(0, 255, 200)
+ToggleBtn.TextSize = 13
+ToggleBtn.Active = true
+ToggleBtn.Draggable = true
+
+UICorner.CornerRadius = UDim.new(0, 8)
+UICorner.Parent = ToggleBtn
 
 -- 1. Bikin Jendela Utama (Window)
 local Window = Fluent:CreateWindow({
@@ -22,23 +49,28 @@ local Window = Fluent:CreateWindow({
     Theme = "Dark"
 })
 
--- Tangkap ScreenGui milik Fluent yang BARU MUNCUL secara mutlak!
-local fluentGui = nil
-task.spawn(function()
-    task.wait(0.1) -- Jeda mikro supaya executor sempat me-render GUI
-    for _, v in ipairs(coreGui:GetChildren()) do
-        if not existingCore[v] and v:IsA("ScreenGui") then
-            fluentGui = v
-            break
-        end
-    end
-    if not fluentGui then
-        for _, v in ipairs(playerGui:GetChildren()) do
-            if not existingPlayer[v] and v:IsA("ScreenGui") then
-                fluentGui = v
-                break
+-- Fungsi pencari ScreenGui Fluent yang tahan banting
+local function findFluentGui()
+    local containers = {coreGui, playerGui}
+    for _, container in ipairs(containers) do
+        for _, gui in ipairs(container:GetChildren()) do
+            if gui:IsA("ScreenGui") and gui ~= ScreenGui then
+                for _, desc in ipairs(gui:GetDescendants()) do
+                    if desc:IsA("TextLabel") and desc.Text == "CLOUZER HUB" then
+                        return gui
+                    end
+                end
             end
         end
+    end
+    return nil
+end
+
+local fluentGui = nil
+task.spawn(function()
+    while not fluentGui do
+        task.wait(0.3)
+        fluentGui = findFluentGui()
     end
 end)
 
@@ -95,62 +127,32 @@ SaveManager:BuildConfigSection(Tabs.Settings)
 Window:SelectTab(1)
 SaveManager:LoadAutoloadConfig()
 
--- ==========================================
--- TOMBOL MELAYANG MINIMIZE/RESTORE (DIJAMIN WORK)
--- ==========================================
-local ScreenGui = Instance.new("ScreenGui")
-local ToggleBtn = Instance.new("TextButton")
-local UICorner = Instance.new("UICorner")
-
-ScreenGui.Name = "ClouzerMobileToggle"
-pcall(function()
-    ScreenGui.Parent = coreGui
-end)
-if not ScreenGui.Parent then
-    ScreenGui.Parent = playerGui
-end
-ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-
-ToggleBtn.Name = "ToggleButton"
-ToggleBtn.Parent = ScreenGui
-ToggleBtn.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-ToggleBtn.BorderColor3 = Color3.fromRGB(0, 255, 200)
-ToggleBtn.BorderSizePixel = 2
-ToggleBtn.Position = UDim2.new(0, 20, 0.4, 0)
-ToggleBtn.Size = UDim2.new(0, 45, 0, 45)
-ToggleBtn.Font = Enum.Font.GothamBold
-ToggleBtn.Text = "CLZ"
-ToggleBtn.TextColor3 = Color3.fromRGB(0, 255, 200)
-ToggleBtn.TextSize = 13
-ToggleBtn.Active = true
-ToggleBtn.Draggable = true
-
-UICorner.CornerRadius = UDim.new(0, 8)
-UICorner.Parent = ToggleBtn
-
--- Fungsi Toggle pakai objek GUI yang udah pasti terekam
+-- Fungsi Tombol Minimize / Restore (Dengan Fallback Darurat)
 local isOpen = true
 ToggleBtn.MouseButton1Click:Connect(function()
-    -- Backup kalau variabel telat ter-load
     if not fluentGui then
-        for _, v in ipairs(coreGui:GetChildren()) do
-            if not existingCore[v] and v:IsA("ScreenGui") and v ~= ScreenGui then
-                fluentGui = v
-                break
-            end
-        end
+        fluentGui = findFluentGui()
+    end
+
+    isOpen = not isOpen
+
+    if isOpen then
+        ToggleBtn.TextColor3 = Color3.fromRGB(0, 255, 200) -- Hijau (Terbuka)
+    else
+        ToggleBtn.TextColor3 = Color3.fromRGB(255, 80, 80)  -- Merah (Minimize)
     end
 
     if fluentGui then
-        isOpen = not isOpen
         fluentGui.Enabled = isOpen
-        
-        if isOpen then
-            ToggleBtn.TextColor3 = Color3.fromRGB(0, 255, 200) -- Hijau (Kebuka)
-        else
-            ToggleBtn.TextColor3 = Color3.fromRGB(255, 80, 80)  -- Merah (Minimize)
-        end
     else
-        print("ScreenGui Fluent gagal dideteksi di perangkat ini!")
+        -- Fallback pengaman mutlak: Sembunyikan semua ScreenGui asing selain tombol kita
+        local containers = {coreGui, playerGui}
+        for _, c in ipairs(containers) do
+            for _, g in ipairs(c:GetChildren()) do
+                if g:IsA("ScreenGui") and g ~= ScreenGui then
+                    g.Enabled = isOpen
+                end
+            end
+        end
     end
 end)
