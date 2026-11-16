@@ -74,7 +74,7 @@ Window:SelectTab(1)
 SaveManager:LoadAutoloadConfig()
 
 -- ==========================================
--- TOMBOL MELAYANG MINIMIZE/RESTORE MOBILE
+-- TOMBOL MELAYANG MINIMIZE/RESTORE MOBILE (ANTI GAGAL)
 -- ==========================================
 local ScreenGui = Instance.new("ScreenGui")
 local ToggleBtn = Instance.new("TextButton")
@@ -106,50 +106,40 @@ ToggleBtn.Draggable = true -- Bisa digeser-geser di layar HP
 UICorner.CornerRadius = UDim.new(0, 8)
 UICorner.Parent = ToggleBtn
 
--- Cari dan Kunci (Cache) Frame Utama Fluent di awal secara permanen
-local targetFrame = nil
-task.spawn(function()
-    while not targetFrame do
-        task.wait(0.2)
-        local containers = {game:GetService("CoreGui"), game.Players.LocalPlayer:WaitForChild("PlayerGui")}
-        for _, parentContainer in ipairs(containers) do
-            for _, gui in ipairs(parentContainer:GetChildren()) do
-                if gui:IsA("ScreenGui") and gui ~= ScreenGui then
-                    for _, desc in ipairs(gui:GetDescendants()) do
-                        if desc:IsA("TextLabel") and desc.Text == "CLOUZER HUB" then
-                            -- Cari frame induk utama dari judul tersebut
-                            local p = desc.Parent
-                            while p and p ~= gui do
-                                if p:IsA("Frame") and p.Size.X.Offset >= 500 then
-                                    targetFrame = p
-                                    break
-                                end
-                                p = p.Parent
-                            end
-                            break
-                        end
+-- Fungsi mencari ScreenGui Fluent dengan aman
+local function findFluentGui()
+    local containers = {game:GetService("CoreGui"), game.Players.LocalPlayer:WaitForChild("PlayerGui")}
+    for _, container in ipairs(containers) do
+        for _, gui in ipairs(container:GetChildren()) do
+            if gui:IsA("ScreenGui") and gui ~= ScreenGui then
+                for _, desc in ipairs(gui:GetDescendants()) do
+                    if desc:IsA("TextLabel") and (desc.Text == "CLOUZER HUB" or desc.Text == "High-Energy Cyber Edition") then
+                        return gui
                     end
                 end
-                if targetFrame then break end
             end
-            if targetFrame then break end
         end
     end
-end)
+    return nil
+end
 
--- Fungsi Toggle Minimize / Restore yang Aman & Stabil
+-- Fungsi Toggle Minimize / Restore saat tombol "CLZ" diklik
 local isOpen = true
 ToggleBtn.MouseButton1Click:Connect(function()
-    if not targetFrame then return end
+    local fluentGui = findFluentGui()
     
-    isOpen = not isOpen
-    
-    -- Indikator warna (Hijau = Buka, Merah = Minimize)
-    if isOpen then
-        ToggleBtn.TextColor3 = Color3.fromRGB(0, 255, 200)
+    if fluentGui then
+        isOpen = not isOpen
+        fluentGui.Enabled = isOpen
+        
+        -- Indikator warna (Hijau = Buka, Merah = Minimize)
+        if isOpen then
+            ToggleBtn.TextColor3 = Color3.fromRGB(0, 255, 200)
+        else
+            ToggleBtn.TextColor3 = Color3.fromRGB(255, 80, 80)
+        end
     else
-        ToggleBtn.TextColor3 = Color3.fromRGB(255, 80, 80)
+        -- Fallback kalau belum kedetek sama sekali
+        print("CLOUZER HUB ScreenGui belum tertangkap!")
     end
-
-    targetFrame.Visible = isOpen
 end)
