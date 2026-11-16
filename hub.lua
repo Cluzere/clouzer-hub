@@ -74,7 +74,7 @@ Window:SelectTab(1)
 SaveManager:LoadAutoloadConfig()
 
 -- ==========================================
--- TOMBOL MELAYANG MINIMIZE/RESTORE MOBILE (CACHED)
+-- TOMBOL MELAYANG MINIMIZE/RESTORE MOBILE
 -- ==========================================
 local ScreenGui = Instance.new("ScreenGui")
 local ToggleBtn = Instance.new("TextButton")
@@ -106,10 +106,10 @@ ToggleBtn.Draggable = true -- Bisa digeser-geser di layar HP
 UICorner.CornerRadius = UDim.new(0, 8)
 UICorner.Parent = ToggleBtn
 
--- Cari dan Simpan (Cache) ScreenGui milik Fluent di awal secara permanen
-local fluentScreenGui = nil
+-- Cari dan Kunci (Cache) Frame Utama Fluent di awal secara permanen
+local targetFrame = nil
 task.spawn(function()
-    while not fluentScreenGui do
+    while not targetFrame do
         task.wait(0.2)
         local containers = {game:GetService("CoreGui"), game.Players.LocalPlayer:WaitForChild("PlayerGui")}
         for _, parentContainer in ipairs(containers) do
@@ -117,30 +117,39 @@ task.spawn(function()
                 if gui:IsA("ScreenGui") and gui ~= ScreenGui then
                     for _, desc in ipairs(gui:GetDescendants()) do
                         if desc:IsA("TextLabel") and desc.Text == "CLOUZER HUB" then
-                            fluentScreenGui = gui
+                            -- Cari frame induk utama dari judul tersebut
+                            local p = desc.Parent
+                            while p and p ~= gui do
+                                if p:IsA("Frame") and p.Size.X.Offset >= 500 then
+                                    targetFrame = p
+                                    break
+                                end
+                                p = p.Parent
+                            end
                             break
                         end
                     end
                 end
-                if fluentScreenGui then break end
+                if targetFrame then break end
             end
-            if fluentScreenGui then break end
+            if targetFrame then break end
         end
     end
 end)
 
--- Fungsi Toggle pakai referensi yang udah disimpan (Dijamin gak bakal ilang!)
+-- Fungsi Toggle Minimize / Restore yang Aman & Stabil
 local isOpen = true
 ToggleBtn.MouseButton1Click:Connect(function()
-    if not fluentScreenGui then return end
+    if not targetFrame then return end
     
     isOpen = not isOpen
     
+    -- Indikator warna (Hijau = Buka, Merah = Minimize)
     if isOpen then
         ToggleBtn.TextColor3 = Color3.fromRGB(0, 255, 200)
     else
         ToggleBtn.TextColor3 = Color3.fromRGB(255, 80, 80)
     end
 
-    fluentScreenGui.Enabled = isOpen
+    targetFrame.Visible = isOpen
 end)
