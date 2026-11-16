@@ -2,6 +2,16 @@ local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/
 local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/SaveManager.lua"))()
 local InterfaceManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/InterfaceManager.lua"))()
 
+-- Catat daftar GUI yang ada SEBELUM window dibuat (buat nangkep GUI Fluent secara instan)
+local coreGui = game:GetService("CoreGui")
+local players = game:GetService("Players")
+local playerGui = players.LocalPlayer:WaitForChild("PlayerGui")
+
+local existingCore = {}
+for _, v in ipairs(coreGui:GetChildren()) do existingCore[v] = true end
+local existingPlayer = {}
+for _, v in ipairs(playerGui:GetChildren()) do existingPlayer[v] = true end
+
 -- 1. Bikin Jendela Utama (Window)
 local Window = Fluent:CreateWindow({
     Title = "CLOUZER HUB",
@@ -11,6 +21,26 @@ local Window = Fluent:CreateWindow({
     Acrylic = true,
     Theme = "Dark"
 })
+
+-- Tangkap ScreenGui milik Fluent yang BARU MUNCUL secara mutlak!
+local fluentGui = nil
+task.spawn(function()
+    task.wait(0.1) -- Jeda mikro supaya executor sempat me-render GUI
+    for _, v in ipairs(coreGui:GetChildren()) do
+        if not existingCore[v] and v:IsA("ScreenGui") then
+            fluentGui = v
+            break
+        end
+    end
+    if not fluentGui then
+        for _, v in ipairs(playerGui:GetChildren()) do
+            if not existingPlayer[v] and v:IsA("ScreenGui") then
+                fluentGui = v
+                break
+            end
+        end
+    end
+end)
 
 -- 2. Bikin Menu Tab
 local Tabs = {
@@ -66,86 +96,61 @@ Window:SelectTab(1)
 SaveManager:LoadAutoloadConfig()
 
 -- ==========================================
--- TOMBOL RESTORE / MINIMIZE KHUSUS MOBILE
+-- TOMBOL MELAYANG MINIMIZE/RESTORE (DIJAMIN WORK)
 -- ==========================================
 local ScreenGui = Instance.new("ScreenGui")
-local RestoreBtn = Instance.new("TextButton")
+local ToggleBtn = Instance.new("TextButton")
 local UICorner = Instance.new("UICorner")
 
-ScreenGui.Name = "ClouzerRestoreGui"
+ScreenGui.Name = "ClouzerMobileToggle"
 pcall(function()
-    ScreenGui.Parent = game:GetService("CoreGui")
+    ScreenGui.Parent = coreGui
 end)
 if not ScreenGui.Parent then
-    ScreenGui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
+    ScreenGui.Parent = playerGui
 end
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-ScreenGui.Enabled = false -- Mulanya disembunyiin karena window pas awal ke-buka lagi aktif
 
-RestoreBtn.Name = "RestoreButton"
-RestoreBtn.Parent = ScreenGui
-RestoreBtn.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-RestoreBtn.BorderColor3 = Color3.fromRGB(0, 255, 200)
-RestoreBtn.BorderSizePixel = 2
-RestoreBtn.Position = UDim2.new(0, 20, 0.4, 0)
-RestoreBtn.Size = UDim2.new(0, 45, 0, 45)
-RestoreBtn.Font = Enum.Font.GothamBold
-RestoreBtn.Text = "CLZ"
-RestoreBtn.TextColor3 = Color3.fromRGB(0, 255, 200)
-RestoreBtn.TextSize = 13
-RestoreBtn.Active = true
-RestoreBtn.Draggable = true
+ToggleBtn.Name = "ToggleButton"
+ToggleBtn.Parent = ScreenGui
+ToggleBtn.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+ToggleBtn.BorderColor3 = Color3.fromRGB(0, 255, 200)
+ToggleBtn.BorderSizePixel = 2
+ToggleBtn.Position = UDim2.new(0, 20, 0.4, 0)
+ToggleBtn.Size = UDim2.new(0, 45, 0, 45)
+ToggleBtn.Font = Enum.Font.GothamBold
+ToggleBtn.Text = "CLZ"
+ToggleBtn.TextColor3 = Color3.fromRGB(0, 255, 200)
+ToggleBtn.TextSize = 13
+ToggleBtn.Active = true
+ToggleBtn.Draggable = true
 
 UICorner.CornerRadius = UDim.new(0, 8)
-UICorner.Parent = RestoreBtn
+UICorner.Parent = ToggleBtn
 
--- Cari frame utama Fluent buat di-minimize/restore bersih
-local mainFrame = nil
-task.spawn(function()
-    while not mainFrame do
-        task.wait(0.2)
-        local containers = {game:GetService("CoreGui"), game.Players.LocalPlayer:WaitForChild("PlayerGui")}
-        for _, container in ipairs(containers) do
-            for _, gui in ipairs(container:GetChildren()) do
-                if gui:IsA("ScreenGui") and gui ~= ScreenGui then
-                    for _, desc in ipairs(gui:GetDescendants()) do
-                        if desc:IsA("TextLabel") and desc.Text == "CLOUZER HUB" then
-                            local p = desc.Parent
-                            while p and p ~= gui do
-                                if p:IsA("Frame") and p.Size.X.Offset >= 500 then
-                                    mainFrame = p
-                                    break
-                                end
-                                p = p.Parent
-                            end
-                            break
-                        end
-                    end
-                end
-                if mainFrame then break end
-            end
-            if mainFrame then break end
-        end
-    end
-end)
-
--- Tombol buat buka lagi (Restore) pas di-minimize
-RestoreBtn.MouseButton1Click:Connect(function()
-    if mainFrame then
-        mainFrame.Visible = true
-        ScreenGui.Enabled = false -- Sembunyikan tombol "CLZ" pas hub ke-buka
-    end
-end)
-
--- Tambahin tombol minimize kecil di dalam jendela Fluent secara otomatis kalau ketemu
-task.spawn(function()
-    while true do
-        task.wait(1)
-        if mainFrame then
-            -- Cari apakah ada tombol close/minimize bawaan, kalau mau gampang kita sediakan trigger minimize via notif atau kita pantau visibilitas frame
-            if not mainFrame.Visible and not ScreenGui.Enabled then
-                ScreenGui.Enabled = true
+-- Fungsi Toggle pakai objek GUI yang udah pasti terekam
+local isOpen = true
+ToggleBtn.MouseButton1Click:Connect(function()
+    -- Backup kalau variabel telat ter-load
+    if not fluentGui then
+        for _, v in ipairs(coreGui:GetChildren()) do
+            if not existingCore[v] and v:IsA("ScreenGui") and v ~= ScreenGui then
+                fluentGui = v
+                break
             end
         end
+    end
+
+    if fluentGui then
+        isOpen = not isOpen
+        fluentGui.Enabled = isOpen
+        
+        if isOpen then
+            ToggleBtn.TextColor3 = Color3.fromRGB(0, 255, 200) -- Hijau (Kebuka)
+        else
+            ToggleBtn.TextColor3 = Color3.fromRGB(255, 80, 80)  -- Merah (Minimize)
+        end
+    else
+        print("ScreenGui Fluent gagal dideteksi di perangkat ini!")
     end
 end)
