@@ -74,7 +74,7 @@ Window:SelectTab(1)
 SaveManager:LoadAutoloadConfig()
 
 -- ==========================================
--- TOMBOL MELAYANG MINIMIZE/RESTORE MOBILE
+-- TOMBOL MELAYANG MINIMIZE/RESTORE MOBILE (CACHED)
 -- ==========================================
 local ScreenGui = Instance.new("ScreenGui")
 local ToggleBtn = Instance.new("TextButton")
@@ -106,32 +106,41 @@ ToggleBtn.Draggable = true -- Bisa digeser-geser di layar HP
 UICorner.CornerRadius = UDim.new(0, 8)
 UICorner.Parent = ToggleBtn
 
--- Fungsi toggle minimize/restore jendela utama
+-- Cari dan Simpan (Cache) ScreenGui milik Fluent di awal secara permanen
+local fluentScreenGui = nil
+task.spawn(function()
+    while not fluentScreenGui do
+        task.wait(0.2)
+        local containers = {game:GetService("CoreGui"), game.Players.LocalPlayer:WaitForChild("PlayerGui")}
+        for _, parentContainer in ipairs(containers) do
+            for _, gui in ipairs(parentContainer:GetChildren()) do
+                if gui:IsA("ScreenGui") and gui ~= ScreenGui then
+                    for _, desc in ipairs(gui:GetDescendants()) do
+                        if desc:IsA("TextLabel") and desc.Text == "CLOUZER HUB" then
+                            fluentScreenGui = gui
+                            break
+                        end
+                    end
+                end
+                if fluentScreenGui then break end
+            end
+            if fluentScreenGui then break end
+        end
+    end
+end)
+
+-- Fungsi Toggle pakai referensi yang udah disimpan (Dijamin gak bakal ilang!)
 local isOpen = true
 ToggleBtn.MouseButton1Click:Connect(function()
+    if not fluentScreenGui then return end
+    
     isOpen = not isOpen
     
-    -- Ubah warna teks tombol sebagai indikator (Hijau = Buka, Merah = Tutup)
     if isOpen then
         ToggleBtn.TextColor3 = Color3.fromRGB(0, 255, 200)
     else
         ToggleBtn.TextColor3 = Color3.fromRGB(255, 80, 80)
     end
 
-    -- Cari dan sembunyikan/tampilkan jendela utama CLOUZER HUB secara otomatis
-    local containers = {game:GetService("CoreGui"), game.Players.LocalPlayer:WaitForChild("PlayerGui")}
-    for _, parentContainer in ipairs(containers) do
-        for _, obj in ipairs(parentContainer:GetDescendants()) do
-            if obj:IsA("TextLabel") and obj.Text == "CLOUZER HUB" then
-                local parent = obj.Parent
-                while parent and parent ~= parentContainer do
-                    if parent:IsA("Frame") and parent.Size.X.Offset > 400 then
-                        parent.Visible = isOpen
-                        break
-                    end
-                    parent = parent.Parent
-                end
-            end
-        end
-    end
+    fluentScreenGui.Enabled = isOpen
 end)
