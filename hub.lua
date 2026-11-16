@@ -8,7 +8,7 @@ local Window = Fluent:CreateWindow({
     SubTitle = "High-Energy Cyber Edition",
     TabWidth = 160,
     Size = UDim2.fromOffset(580, 460),
-    Acrylic = true, -- Efek blur kaca transparan
+    Acrylic = true,
     Theme = "Dark"
 })
 
@@ -22,20 +22,17 @@ local Tabs = {
 local Options = Fluent.Options
 
 do
-    -- Notifikasi awal pas script sukses di-load
     Fluent:Notify({
         Title = "CLOUZER HUB Loaded!",
         Content = "Sistem berhasil diaktifkan. Enjoy, bro!",
         Duration = 5
     })
 
-    -- Info / Paragraph di Tab Utama
     Tabs.Main:AddParagraph({
         Title = "Selamat Datang di CLOUZER HUB",
         Content = "Gunakan script ini dengan bijak.\nStatus: Connected & Secure."
     })
 
-    -- Contoh Tombol Aksi
     Tabs.Main:AddButton({
         Title = "Contoh Tombol",
         Description = "Klik untuk menjalankan fungsi tertentu",
@@ -48,7 +45,6 @@ do
         end
     })
 
-    -- Contoh Toggle (On/Off) di Tab Fitur
     Tabs.Features:AddToggle("AutoFarmToggle", {
         Title = "Auto Farm / Fitur Utama",
         Default = false
@@ -57,30 +53,26 @@ do
     Options.AutoFarmToggle:OnChanged(function()
         if Options.AutoFarmToggle.Value then
             print("Fitur diaktifkan!")
-            -- Masukin kode script cheat/fitur lu di sini
         else
             print("Fitur dimatikan!")
         end
     end)
 end
 
--- 3. Manager buat Setting & Config
 InterfaceManager:BuildInterfaceSection(Tabs.Settings)
 SaveManager:BuildConfigSection(Tabs.Settings)
 
 Window:SelectTab(1)
-
--- Load config otomatis kalau ada
 SaveManager:LoadAutoloadConfig()
 
 -- ==========================================
--- TOMBOL MELAYANG MINIMIZE/RESTORE MOBILE (ANTI GAGAL)
+-- TOMBOL RESTORE / MINIMIZE KHUSUS MOBILE
 -- ==========================================
 local ScreenGui = Instance.new("ScreenGui")
-local ToggleBtn = Instance.new("TextButton")
+local RestoreBtn = Instance.new("TextButton")
 local UICorner = Instance.new("UICorner")
 
-ScreenGui.Name = "ClouzerMobileToggle"
+ScreenGui.Name = "ClouzerRestoreGui"
 pcall(function()
     ScreenGui.Parent = game:GetService("CoreGui")
 end)
@@ -88,58 +80,72 @@ if not ScreenGui.Parent then
     ScreenGui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
 end
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+ScreenGui.Enabled = false -- Mulanya disembunyiin karena window pas awal ke-buka lagi aktif
 
-ToggleBtn.Name = "ToggleButton"
-ToggleBtn.Parent = ScreenGui
-ToggleBtn.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-ToggleBtn.BorderColor3 = Color3.fromRGB(0, 255, 200)
-ToggleBtn.BorderSizePixel = 2
-ToggleBtn.Position = UDim2.new(0, 20, 0.4, 0)
-ToggleBtn.Size = UDim2.new(0, 45, 0, 45)
-ToggleBtn.Font = Enum.Font.GothamBold
-ToggleBtn.Text = "CLZ"
-ToggleBtn.TextColor3 = Color3.fromRGB(0, 255, 200)
-ToggleBtn.TextSize = 13
-ToggleBtn.Active = true
-ToggleBtn.Draggable = true -- Bisa digeser-geser di layar HP
+RestoreBtn.Name = "RestoreButton"
+RestoreBtn.Parent = ScreenGui
+RestoreBtn.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+RestoreBtn.BorderColor3 = Color3.fromRGB(0, 255, 200)
+RestoreBtn.BorderSizePixel = 2
+RestoreBtn.Position = UDim2.new(0, 20, 0.4, 0)
+RestoreBtn.Size = UDim2.new(0, 45, 0, 45)
+RestoreBtn.Font = Enum.Font.GothamBold
+RestoreBtn.Text = "CLZ"
+RestoreBtn.TextColor3 = Color3.fromRGB(0, 255, 200)
+RestoreBtn.TextSize = 13
+RestoreBtn.Active = true
+RestoreBtn.Draggable = true
 
 UICorner.CornerRadius = UDim.new(0, 8)
-UICorner.Parent = ToggleBtn
+UICorner.Parent = RestoreBtn
 
--- Fungsi mencari ScreenGui Fluent dengan aman
-local function findFluentGui()
-    local containers = {game:GetService("CoreGui"), game.Players.LocalPlayer:WaitForChild("PlayerGui")}
-    for _, container in ipairs(containers) do
-        for _, gui in ipairs(container:GetChildren()) do
-            if gui:IsA("ScreenGui") and gui ~= ScreenGui then
-                for _, desc in ipairs(gui:GetDescendants()) do
-                    if desc:IsA("TextLabel") and (desc.Text == "CLOUZER HUB" or desc.Text == "High-Energy Cyber Edition") then
-                        return gui
+-- Cari frame utama Fluent buat di-minimize/restore bersih
+local mainFrame = nil
+task.spawn(function()
+    while not mainFrame do
+        task.wait(0.2)
+        local containers = {game:GetService("CoreGui"), game.Players.LocalPlayer:WaitForChild("PlayerGui")}
+        for _, container in ipairs(containers) do
+            for _, gui in ipairs(container:GetChildren()) do
+                if gui:IsA("ScreenGui") and gui ~= ScreenGui then
+                    for _, desc in ipairs(gui:GetDescendants()) do
+                        if desc:IsA("TextLabel") and desc.Text == "CLOUZER HUB" then
+                            local p = desc.Parent
+                            while p and p ~= gui do
+                                if p:IsA("Frame") and p.Size.X.Offset >= 500 then
+                                    mainFrame = p
+                                    break
+                                end
+                                p = p.Parent
+                            end
+                            break
+                        end
                     end
                 end
+                if mainFrame then break end
             end
+            if mainFrame then break end
         end
     end
-    return nil
-end
+end)
 
--- Fungsi Toggle Minimize / Restore saat tombol "CLZ" diklik
-local isOpen = true
-ToggleBtn.MouseButton1Click:Connect(function()
-    local fluentGui = findFluentGui()
-    
-    if fluentGui then
-        isOpen = not isOpen
-        fluentGui.Enabled = isOpen
-        
-        -- Indikator warna (Hijau = Buka, Merah = Minimize)
-        if isOpen then
-            ToggleBtn.TextColor3 = Color3.fromRGB(0, 255, 200)
-        else
-            ToggleBtn.TextColor3 = Color3.fromRGB(255, 80, 80)
+-- Tombol buat buka lagi (Restore) pas di-minimize
+RestoreBtn.MouseButton1Click:Connect(function()
+    if mainFrame then
+        mainFrame.Visible = true
+        ScreenGui.Enabled = false -- Sembunyikan tombol "CLZ" pas hub ke-buka
+    end
+end)
+
+-- Tambahin tombol minimize kecil di dalam jendela Fluent secara otomatis kalau ketemu
+task.spawn(function()
+    while true do
+        task.wait(1)
+        if mainFrame then
+            -- Cari apakah ada tombol close/minimize bawaan, kalau mau gampang kita sediakan trigger minimize via notif atau kita pantau visibilitas frame
+            if not mainFrame.Visible and not ScreenGui.Enabled then
+                ScreenGui.Enabled = true
+            end
         end
-    else
-        -- Fallback kalau belum kedetek sama sekali
-        print("CLOUZER HUB ScreenGui belum tertangkap!")
     end
 end)
