@@ -10,7 +10,6 @@ local Window = Fluent:CreateWindow({
     Size = UDim2.fromOffset(580, 460),
     Acrylic = true, -- Efek blur kaca transparan
     Theme = "Dark",
-    MinimizeKey = Enum.KeyCode.LeftControl -- Tombol keyboard buat minimize (LCtrl)
 })
 
 -- 2. Bikin Menu Tab
