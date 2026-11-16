@@ -6,7 +6,7 @@ local coreGui = game:GetService("CoreGui")
 local playerGui = game.Players.LocalPlayer:WaitForChild("PlayerGui")
 
 -- ==========================================
--- BUAT TOMBOL "CLZ" DI AWAL (AGAR AMAN & INDEPENDEN)
+-- BUAT TOMBOL MELAYANG "CLZ" DI AWAL
 -- ==========================================
 local ScreenGui = Instance.new("ScreenGui")
 local ToggleBtn = Instance.new("TextButton")
@@ -32,7 +32,7 @@ ToggleBtn.Size = UDim2.new(0, 45, 0, 45)
 ToggleBtn.Font = Enum.Font.GothamBold
 ToggleBtn.Text = "CLZ"
 ToggleBtn.TextColor3 = Color3.fromRGB(0, 255, 200)
-ToggleBtn.TextSize = 13
+ToggleBtn.TextSize = 12
 ToggleBtn.Active = true
 ToggleBtn.Draggable = true
 
@@ -48,31 +48,6 @@ local Window = Fluent:CreateWindow({
     Acrylic = true,
     Theme = "Dark"
 })
-
--- Fungsi pencari ScreenGui Fluent yang tahan banting
-local function findFluentGui()
-    local containers = {coreGui, playerGui}
-    for _, container in ipairs(containers) do
-        for _, gui in ipairs(container:GetChildren()) do
-            if gui:IsA("ScreenGui") and gui ~= ScreenGui then
-                for _, desc in ipairs(gui:GetDescendants()) do
-                    if desc:IsA("TextLabel") and desc.Text == "CLOUZER HUB" then
-                        return gui
-                    end
-                end
-            end
-        end
-    end
-    return nil
-end
-
-local fluentGui = nil
-task.spawn(function()
-    while not fluentGui do
-        task.wait(0.3)
-        fluentGui = findFluentGui()
-    end
-end)
 
 -- 2. Bikin Menu Tab
 local Tabs = {
@@ -127,30 +102,40 @@ SaveManager:BuildConfigSection(Tabs.Settings)
 Window:SelectTab(1)
 SaveManager:LoadAutoloadConfig()
 
--- Fungsi Tombol Minimize / Restore (Dengan Fallback Darurat)
+-- ==========================================
+-- SISTEM TOGGLE MINIMIZE / RESTORE OTOMATIS
+-- ==========================================
 local isOpen = true
 ToggleBtn.MouseButton1Click:Connect(function()
-    if not fluentGui then
-        fluentGui = findFluentGui()
-    end
-
     isOpen = not isOpen
 
+    -- Ubah teks & warna indikator tombol secara instan
     if isOpen then
+        ToggleBtn.Text = "CLZ"
         ToggleBtn.TextColor3 = Color3.fromRGB(0, 255, 200) -- Hijau (Terbuka)
     else
-        ToggleBtn.TextColor3 = Color3.fromRGB(255, 80, 80)  -- Merah (Minimize)
+        ToggleBtn.Text = "SHOW"
+        ToggleBtn.TextColor3 = Color3.fromRGB(255, 80, 80)  -- Merah (Minimized)
     end
 
-    if fluentGui then
-        fluentGui.Enabled = isOpen
-    else
-        -- Fallback pengaman mutlak: Sembunyikan semua ScreenGui asing selain tombol kita
-        local containers = {coreGui, playerGui}
-        for _, c in ipairs(containers) do
-            for _, g in ipairs(c:GetChildren()) do
-                if g:IsA("ScreenGui") and g ~= ScreenGui then
-                    g.Enabled = isOpen
+    -- Cari dan toggle ScreenGui milik Fluent secara otomatis
+    local containers = {coreGui, playerGui}
+    for _, container in ipairs(containers) do
+        for _, gui in ipairs(container:GetChildren()) do
+            if gui:IsA("ScreenGui") and gui ~= ScreenGui then
+                -- Cek apakah ScreenGui ini punya komponen Frame (ciri khas UI library)
+                local hasFrame = false
+                pcall(function()
+                    for _, desc in ipairs(gui:GetDescendants()) do
+                        if desc:IsA("Frame") then
+                            hasFrame = true
+                            break
+                        end
+                    end
+                end)
+                
+                if hasFrame then
+                    gui.Enabled = isOpen
                 end
             end
         end
