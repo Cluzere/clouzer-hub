@@ -8,12 +8,18 @@ pcall(function()
     end
 end)
 
+local coreGui = game:GetService("CoreGui")
+local playerGui = game.Players.LocalPlayer:WaitForChild("PlayerGui")
+
+-- Catat daftar GUI SEBELUM window Fluent dibuat (buat nangkep ScreenGui aslinya)
+local preCore = {}
+for _, v in ipairs(coreGui:GetChildren()) do preCore[v] = true end
+local prePlayer = {}
+for _, v in ipairs(playerGui:GetChildren()) do prePlayer[v] = true end
+
 local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
 local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/SaveManager.lua"))()
 local InterfaceManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/InterfaceManager.lua"))()
-
-local coreGui = game:GetService("CoreGui")
-local playerGui = game.Players.LocalPlayer:WaitForChild("PlayerGui")
 
 -- ==========================================
 -- BUAT TOMBOL MELAYANG "CLZ" (ANTI-DOUBLE)
@@ -59,32 +65,22 @@ local Window = Fluent:CreateWindow({
     Theme = "Dark"
 })
 
--- Cari Frame utama Fluent secara presisi
-local mainFrame = nil
+-- Tangkap ScreenGui milik Fluent yang BARU MUNCUL secara mutlak!
+local fluentGui = nil
 task.spawn(function()
-    while not mainFrame do
-        task.wait(0.2)
-        local containers = {coreGui, playerGui}
-        for _, container in ipairs(containers) do
-            for _, gui in ipairs(container:GetChildren()) do
-                if gui:IsA("ScreenGui") and gui ~= ScreenGui then
-                    for _, desc in ipairs(gui:GetDescendants()) do
-                        if desc:IsA("TextLabel") and desc.Text == "CLOUZER HUB" then
-                            local p = desc.Parent
-                            while p and p ~= gui do
-                                if p:IsA("Frame") and p.Size.X.Offset >= 400 then
-                                    mainFrame = p
-                                    break
-                                end
-                                p = p.Parent
-                            end
-                            break
-                        end
-                    end
-                end
-                if mainFrame then break end
+    task.wait(0.2)
+    for _, v in ipairs(coreGui:GetChildren()) do
+        if not preCore[v] and v:IsA("ScreenGui") and v ~= ScreenGui then
+            fluentGui = v
+            break
+        end
+    end
+    if not fluentGui then
+        for _, v in ipairs(playerGui:GetChildren()) do
+            if not prePlayer[v] and v:IsA("ScreenGui") and v ~= ScreenGui then
+                fluentGui = v
+                break
             end
-            if mainFrame then break end
         end
     end
 end)
@@ -143,13 +139,23 @@ Window:SelectTab(1)
 SaveManager:LoadAutoloadConfig()
 
 -- ==========================================
--- SISTEM MINIMIZE / RESTORE (FRAME TOGGLE)
+-- SISTEM MINIMIZE / RESTORE (SCREEN GUI TOGGLE)
 -- ==========================================
 local isOpen = true
 ToggleBtn.MouseButton1Click:Connect(function()
-    if mainFrame then
+    -- Pengaman darurat kalau fluentGui belum ke-lock
+    if not fluentGui then
+        for _, v in ipairs(coreGui:GetChildren()) do
+            if not preCore[v] and v:IsA("ScreenGui") and v ~= ScreenGui then
+                fluentGui = v
+                break
+            end
+        end
+    end
+
+    if fluentGui then
         isOpen = not isOpen
-        mainFrame.Visible = isOpen
+        fluentGui.Enabled = isOpen
         
         if isOpen then
             ToggleBtn.Text = "CLZ"
@@ -159,6 +165,6 @@ ToggleBtn.MouseButton1Click:Connect(function()
             ToggleBtn.TextColor3 = Color3.fromRGB(255, 80, 80)  -- Merah (Minimize)
         end
     else
-        print("MainFrame Fluent belum tertangkap!")
+        print("ScreenGui Fluent gagal dideteksi!")
     end
 end)
